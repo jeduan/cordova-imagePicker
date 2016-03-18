@@ -57,7 +57,12 @@
 
         imagePicker.delegate = self;
         self.callbackId = command.callbackId;
-        [self.viewController presentViewController:imagePicker animated:YES completion:NULL];
+        //[self.viewController presentViewController:imagePicker animated:YES completion:NULL];
+				// Display the picker in the main thread.
+        __weak CTPicker* weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf.viewController presentViewController:imagePicker animated:YES completion:nil];
+				});
     }];
 }
 
@@ -115,7 +120,8 @@
                         resultHandler:handler];
     }
 
-    [self.viewController dismissViewControllerAnimated:YES completion:NULL];
+		__weak CTPicker* weakSelf = self;
+		[weakSelf.viewController dismissViewControllerAnimated:YES completion:NULL];
 }
 
 - (void) didFinishImagesWithResult: (CDVPluginResult *)pluginResult
@@ -129,7 +135,8 @@
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"User cancelled."];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
     self.callbackId = nil;
-    [self.viewController dismissViewControllerAnimated:YES completion:NULL];
+		__weak CTPicker* weakSelf = self;
+		[weakSelf.viewController dismissViewControllerAnimated:YES completion:NULL];
 }
 
 - (NSString*)tempFilePath:(NSString*)extension
