@@ -61,7 +61,7 @@
         // Display the picker in the main thread.
         __weak CTPicker* weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf.viewController presentViewController:imagePicker animated:YES completion:nil];
+            [weakSelf.viewController presentViewController:imagePicker animated:YES completion:nil];
         });
     }];
 }
@@ -79,45 +79,49 @@
     __block NSMutableArray *resultStrings = [[NSMutableArray alloc] init];
 
     for (PHAsset *asset in assets) {
-        NSString *filePath = [self tempFilePath:@"jpg"];
-        NSURL *fileURL = [NSURL fileURLWithPath:filePath isDirectory:NO];
+        @autoreleasepool {        
+            NSString *filePath = [self tempFilePath:@"jpg"];
+            NSURL *fileURL = [NSURL fileURLWithPath:filePath isDirectory:NO];
 
-        CGSize targetSize;
-        if (self.width == 0 && self.height == 0) {
-            targetSize = PHImageManagerMaximumSize;
-        } else {
-            targetSize = CGSizeMake(self.width, self.height);
-        }
-
-        void (^handler)(UIImage *image, NSDictionary *info) = ^void(UIImage *image, NSDictionary *info) {
-            UIImage *rotatedImage = [self imageByRotatingImage:image];
-
-            NSDictionary *options = @{
-                                      (__bridge id)kCGImageDestinationLossyCompressionQuality: @(self.quality / 100),
-                                      (__bridge id)kCGImageMetadataShouldExcludeGPS: @(YES),
-                                      };
-            CGImageDestinationRef imageDestinationRef =
-            CGImageDestinationCreateWithURL((__bridge CFURLRef)fileURL,
-                                            kUTTypeJPEG,
-                                            1,
-                                            NULL);
-
-            CGImageDestinationAddImage(imageDestinationRef, rotatedImage.CGImage, (__bridge CFDictionaryRef)options);
-            if (CGImageDestinationFinalize(imageDestinationRef)) {
-                [resultStrings addObject:[fileURL absoluteString]];
-                if ([resultStrings count] == [assets count]) {
-                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:resultStrings];
-                    [self didFinishImagesWithResult:pluginResult];
-                }
+            CGSize targetSize;
+            if (self.width == 0 && self.height == 0) {
+                targetSize = PHImageManagerMaximumSize;
+            } else {
+                targetSize = CGSizeMake(self.width, self.height);
             }
-            CFRelease(imageDestinationRef);
-        };
 
-        [manager requestImageForAsset:asset
-                           targetSize:targetSize
-                          contentMode:PHImageContentModeAspectFill
-                              options:options
-                        resultHandler:handler];
+            void (^handler)(UIImage *image, NSDictionary *info) = ^void(UIImage *image, NSDictionary *info) {
+                @autoreleasepool {
+                    UIImage *rotatedImage = [self imageByRotatingImage:image];
+
+                    NSDictionary *options = @{
+                                            (__bridge id)kCGImageDestinationLossyCompressionQuality: @(self.quality / 100),
+                                            (__bridge id)kCGImageMetadataShouldExcludeGPS: @(YES),
+                                            };
+                    CGImageDestinationRef imageDestinationRef =
+                    CGImageDestinationCreateWithURL((__bridge CFURLRef)fileURL,
+                                                    kUTTypeJPEG,
+                                                    1,
+                                                    NULL);
+
+                    CGImageDestinationAddImage(imageDestinationRef, rotatedImage.CGImage, (__bridge CFDictionaryRef)options);
+                    if (CGImageDestinationFinalize(imageDestinationRef)) {
+                        [resultStrings addObject:[fileURL absoluteString]];
+                        if ([resultStrings count] == [assets count]) {
+                            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:resultStrings];
+                            [self didFinishImagesWithResult:pluginResult];
+                        }
+                    }
+                    CFRelease(imageDestinationRef);
+                }
+            };
+
+            [manager requestImageForAsset:asset
+                            targetSize:targetSize
+                            contentMode:PHImageContentModeAspectFill
+                                options:options
+                            resultHandler:handler];
+        }
     }
 
     __weak CTPicker* weakSelf = self;
